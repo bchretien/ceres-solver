@@ -1610,7 +1610,7 @@ elimination group [LiSaad]_.
    specified in this vector. By default, parameter blocks are updated
    only at the end of the optimization, i.e., when the
    :class:`Minimizer` terminates. This behavior is controlled by
-   :member:`Solver::Options::update_state_every_variable`. If the user
+   :member:`Solver::Options::update_state_every_iteration`. If the user
    wishes to have access to the update parameter blocks when his/her
    callbacks are executed, then set
    :member:`Solver::Options::update_state_every_iteration` to true.

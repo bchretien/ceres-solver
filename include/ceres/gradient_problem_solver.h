@@ -263,7 +263,7 @@ class CERES_EXPORT GradientProblemSolver {
     // this vector. By default, parameter blocks are updated only at
     // the end of the optimization, i.e when the Minimizer
     // terminates. This behaviour is controlled by
-    // update_state_every_variable. If the user wishes to have access
+    // update_state_every_iteration. If the user wishes to have access
     // to the update parameter blocks when his/her callbacks are
     // executed, then set update_state_every_iteration to true.
     //
