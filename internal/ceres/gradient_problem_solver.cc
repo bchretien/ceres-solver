@@ -77,6 +77,7 @@ Solver::Options GradientProblemSolverOptionsToSolverOptions(
   COPY_OPTION(gradient_tolerance);
   COPY_OPTION(logging_type);
   COPY_OPTION(minimizer_progress_to_stdout);
+  COPY_OPTION(update_state_every_iteration);
   COPY_OPTION(callbacks);
   return solver_options;
 #undef COPY_OPTION
@@ -138,9 +139,14 @@ void GradientProblemSolver::Solve(const GradientProblemSolver::Options& options,
   }
 
   scoped_ptr<Minimizer> minimizer(Minimizer::Create(LINE_SEARCH));
-  Vector solution(problem.NumParameters());
   VectorRef parameters(parameters_ptr, problem.NumParameters());
-  solution = parameters;
+
+  double* data = parameters_ptr;
+  Vector solution;
+  if (!options.update_state_every_iteration) {
+    solution = parameters;
+    data = solution.data();
+  }
 
   Solver::Summary solver_summary;
   solver_summary.fixed_cost = 0.0;
@@ -148,7 +154,7 @@ void GradientProblemSolver::Solve(const GradientProblemSolver::Options& options,
   solver_summary.postprocessor_time_in_seconds = 0.0;
   solver_summary.line_search_polynomial_minimization_time_in_seconds = 0.0;
 
-  minimizer->Minimize(minimizer_options, solution.data(), &solver_summary);
+  minimizer->Minimize(minimizer_options, data, &solver_summary);
 
   summary->termination_type = solver_summary.termination_type;
   summary->message          = solver_summary.message;
@@ -159,7 +165,9 @@ void GradientProblemSolver::Solve(const GradientProblemSolver::Options& options,
       solver_summary.line_search_polynomial_minimization_time_in_seconds;
 
   if (summary->IsSolutionUsable()) {
-    parameters = solution;
+    if (!options.update_state_every_iteration) {
+      parameters = solution;
+    }
     SetSummaryFinalCost(summary);
   }
 

@@ -33,6 +33,8 @@
 
 #include "gtest/gtest.h"
 
+#include <vector>
+
 namespace ceres {
 namespace internal {
 
@@ -70,6 +72,67 @@ TEST(GradientProblemSolver, SolvesRosenbrockWithDefaultOptions) {
   EXPECT_EQ(CONVERGENCE, summary.termination_type);
   EXPECT_NEAR(1.0, parameters[0], expected_tolerance);
   EXPECT_NEAR(1.0, parameters[1], expected_tolerance);
+}
+
+struct RememberingCallback : public IterationCallback {
+  typedef std::vector<double> parameters_type;
+  explicit RememberingCallback(parameters_type *x)
+    : calls(0),
+      x(x) {}
+  virtual ~RememberingCallback() {}
+  virtual CallbackReturnType operator()(const IterationSummary& summary) {
+    x_values.push_back(*x);
+    return SOLVER_CONTINUE;
+  }
+  int calls;
+  parameters_type *x;
+  std::vector<parameters_type> x_values;
+};
+
+TEST(GradientProblemSolver, UpdateStateEveryIterationOption) {
+  const double expected_tolerance = 1e-9;
+  std::vector<double> parameters(2);
+  parameters[0] = -1.2;
+  parameters[1] = 0.0;
+  std::vector<double> original_parameters = parameters;
+
+  ceres::GradientProblemSolver::Options options;
+
+  RememberingCallback callback(&parameters);
+  options.callbacks.push_back(&callback);
+
+  ceres::GradientProblemSolver::Summary summary;
+  ceres::GradientProblem problem(new Rosenbrock());
+
+  // First try: no updating
+  ceres::Solve(options, problem, parameters.data(), &summary);
+
+  EXPECT_EQ(CONVERGENCE, summary.termination_type);
+  EXPECT_NEAR(summary.final_cost, 0., expected_tolerance);
+  EXPECT_NEAR(1.0, parameters[0], expected_tolerance);
+  EXPECT_NEAR(1.0, parameters[1], expected_tolerance);
+
+  for (int i = 0; i < 2; ++i) {
+    EXPECT_EQ(original_parameters[i], callback.x_values[0][i]);
+    EXPECT_EQ(original_parameters[i], callback.x_values[1][i]);
+  }
+
+  // Second try: with updating
+  parameters = original_parameters;
+  options.update_state_every_iteration = true;
+  callback.x_values.clear();
+  ceres::Solve(options, problem, parameters.data(), &summary);
+
+  EXPECT_EQ(CONVERGENCE, summary.termination_type);
+  EXPECT_NEAR(summary.final_cost, 0., expected_tolerance);
+  EXPECT_NEAR(1.0, parameters[0], expected_tolerance);
+  EXPECT_NEAR(1.0, parameters[1], expected_tolerance);
+
+  for (int i = 0; i < 2; ++i) {
+    EXPECT_NEAR(original_parameters[i], callback.x_values[0][i], expected_tolerance);
+    EXPECT_TRUE(std::abs(original_parameters[i] - callback.x_values[1][i])
+                > expected_tolerance);
+  }
 }
 
 }  // namespace internal
